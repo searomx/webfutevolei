@@ -1,7 +1,7 @@
 import "dotenv/config";
-import { definePrismaConfig } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
-export default definePrismaConfig({
+export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: { path: "prisma/migrations" },
   datasource: {

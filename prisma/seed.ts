@@ -22,7 +22,7 @@ async function main() {
       create: {
         email: "admin@ligainternacontornodabola.com",
         name: "Administrador Master",
-        password: adminPassword,
+        password: "@adminmaster2026",
         role: "ADMIN",
       },
     });

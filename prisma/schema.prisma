@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+enum Role {
+  USER
+  ADMIN
+}
+
+enum EmailStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+}
+
+enum PaymentStatus {
+  PENDING
+}
+
+model User{
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(40)
+  email     String   @db.VarChar(254) @unique
+  password  String   @db.VarChar(128)
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model PairOfPlayers {
+  id        String   @id @default(uuid())
+  player1Id String?
+  registrations Registration[] @relation("LegacyPair")
+  registrationId String?
+  registration Registration? @relation("CategoryPartners", fields: [registrationId], references: [id], onDelete: Cascade)
+  categoryId String? @db.VarChar(30)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([registrationId, categoryId])
+}
+
+model Registration {
+  id            String        @id @default(uuid())
+  requestId     String        @unique @db.Uuid
+  fingerprint   String
+  fullName      String        @db.VarChar(150)
+  nickname      String        @db.VarChar(80)
+  address       String        @db.VarChar(300)
+  trainingPlace String        @db.VarChar(150)
+  birthDate     DateTime      @db.Date
+  phone         String?       @db.VarChar(20)
+  email         String        @db.VarChar(254)
+  stages        String[]
+  categories    String[]
+  pairOfPlayersId String?
+  pairOfPlayers   PairOfPlayers? @relation("LegacyPair", fields: [pairOfPlayersId], references: [id])
+  categoryPartners PairOfPlayers[] @relation("CategoryPartners")
+  amountCents   Int
+  paymentStatus PaymentStatus @default(PENDING)
+  emailStatus   EmailStatus   @default(PENDING)
+  emailLeaseAt  DateTime?
+  emailSentAt   DateTime?
+  athleteEmailSentAt DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model RequestBucket {
+  key      String   @id
+  count    Int      @default(1)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}

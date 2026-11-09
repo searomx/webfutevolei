@@ -30,6 +30,21 @@ Para usar um PostgreSQL existente, configure `DATABASE_URL` e execute
 `npm run db:migrate` somente no banco destinado a esta aplicação.
 Não há reset automático.
 
+### Criar o administrador
+
+Após aplicar as migrations, defina `SEED_ADMIN_PASSWORD` no `.env` local
+(não versionado) ou no ambiente e execute:
+
+```bash
+npx prisma db seed
+```
+
+O comando usa `tsx prisma/seed.ts`, configurado em `prisma.config.ts`.
+O seed conecta ao banco de `DATABASE_URL` e cria o administrador
+`admin@ligainternacontornodabola.com`, armazenando somente o hash bcrypt
+da senha. Execuções posteriores preservam o usuário e a senha existentes.
+Não use senhas reais em arquivos versionados.
+
 Para diagnosticar HTTP 500 em produção, consulte os logs de `/api/registrations`.
 Erros conhecidos do Prisma registram o código (por exemplo, `P2021` para tabela
 ausente ou `P2022` para coluna ausente), sem registrar a mensagem completa,

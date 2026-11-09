@@ -16,9 +16,6 @@
     "test:integration": "node scripts/test-integration.mjs",
     "setup:local": "node scripts/setup-local.mjs"
   },
-  "prisma": {
-    "seed": "ts-node prisma/seed.ts"
-  },
   "dependencies": {
     "@fontsource/noto-sans": "^5",
     "@hookform/resolvers": "^5",
@@ -49,6 +46,7 @@
     "@tailwindcss/turbopack": "^4",
     "@testing-library/react": "^16",
     "@testing-library/user-event": "^14",
+    "@types/bcrypt": "^6.0.0",
     "@types/mailparser": "^3",
     "@types/node": "^20",
     "@types/nodemailer": "^7",

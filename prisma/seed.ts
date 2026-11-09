@@ -1,33 +1,36 @@
-import * as PrismaClientModule from '@prisma/client';
-const bcrypt = require('bcrypt') as {
-  hash: (value: string, rounds: number) => Promise<string>;
-};
-
-const prisma = new (PrismaClientModule as any).PrismaClient();
+import "dotenv/config";
+import { PrismaPg } from "@prisma/adapter-pg";
+import bcrypt from "bcrypt";
+import { PrismaClient } from "../src/generated/prisma/client";
 
 async function main() {
-  const adminPassword = await bcrypt.hash('SenhaSuperSegura123', 10);
+  const connectionString = process.env.DATABASE_URL;
+  const password = process.env.SEED_ADMIN_PASSWORD;
 
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@ligainternacontornodabola.com' },
-    update: {},
-    create: {
-      email: 'admin@ligainternacontornodabola.com',
-      name: 'Administrador Master',
-      password: '@123456',
-      role: 'ADMIN', // Atribuição explícita de Admin
-    },
-  });
+  if (!connectionString) throw new Error("DATABASE_URL obrigatoria para executar o seed.");
+  if (!password) throw new Error("SEED_ADMIN_PASSWORD obrigatoria para executar o seed.");
 
-  console.log({ admin });
+  const adapter = new PrismaPg({ connectionString });
+  const prisma = new PrismaClient({ adapter });
+
+  try {
+    const adminPassword = await bcrypt.hash(password, 10);
+
+    await prisma.user.upsert({
+      where: { email: "admin@ligainternacontornodabola.com" },
+      update: {},
+      create: {
+        email: "admin@ligainternacontornodabola.com",
+        name: "Administrador Master",
+        password: adminPassword,
+        role: "ADMIN",
+      },
+    });
+
+    console.log("Seed do administrador concluido.");
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
-main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+await main();

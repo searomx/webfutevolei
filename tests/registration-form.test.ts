@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { createElement } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RegistrationForm } from "@/components/registration-form";
@@ -46,12 +46,81 @@ async function fillForm() {
   await user.type(screen.getByLabelText("Endereço", { exact: false }), "Rua de Teste, 100");
   await user.type(screen.getByLabelText("Onde treina", { exact: false }), "Arena Teste");
   await user.type(screen.getByLabelText("E-mail", { exact: false }), "atleta@example.test");
-  fireEvent.change(screen.getByLabelText("Data de nascimento", { exact: false }), { target: { value: "1990-01-01" } });
+  await user.type(screen.getByLabelText("Data de nascimento", { exact: false }), "01011990");
   await user.click(screen.getByRole("checkbox", { name: /Masculino C/ }));
   return user;
 }
 
 describe("recuperação da inscrição", () => {
+  it("formata telefone e nascimento ao digitar e envia email minusculo e data ISO", async () => {
+    respond = () => Response.json({
+      id: "protocolo", amountCents: 6000, emailStatus: "SENT", message: "PDF enviado.",
+    });
+    const user = await fillForm();
+    const email = screen.getByLabelText<HTMLInputElement>("E-mail", { exact: false });
+    const phone = screen.getByLabelText<HTMLInputElement>("Telefone (opcional)");
+    const birthDate = screen.getByLabelText<HTMLInputElement>("Data de nascimento", { exact: false });
+    expect(birthDate.type).toBe("text");
+    expect(birthDate.value).toBe("01/01/1990");
+    await user.clear(email);
+    await user.type(email, "ATLETA@Example.TEST");
+    expect(email.value).toBe("atleta@example.test");
+    await user.type(phone, "11999991234");
+    expect(phone.value).toBe("(11) 99999-1234");
+    await user.click(screen.getByRole("button", { name: "Enviar inscrição" }));
+    await screen.findByText("PDF enviado.");
+    expect(submissions[0].athlete).toMatchObject({
+      email: "atleta@example.test", phone: "(11) 99999-1234", birthDate: "1990-01-01",
+    });
+  });
+
+  it("formata valores colados, permite limpar telefone e reinicia os campos mascarados", async () => {
+    respond = () => Response.json({
+      id: "protocolo", amountCents: 6000, emailStatus: "SENT", message: "PDF enviado.",
+    });
+    const user = await fillForm();
+    const email = screen.getByLabelText<HTMLInputElement>("E-mail", { exact: false });
+    const phone = screen.getByLabelText<HTMLInputElement>("Telefone (opcional)");
+    const birthDate = screen.getByLabelText<HTMLInputElement>("Data de nascimento", { exact: false });
+    await user.clear(email);
+    await user.paste("COLADO@EXAMPLE.TEST");
+    expect(email.value).toBe("colado@example.test");
+    await user.click(phone);
+    await user.paste("21987654321");
+    expect(phone.value).toBe("(21) 98765-4321");
+    await user.keyboard("{Control>}a{/Control}{Backspace}");
+    await user.tab();
+    expect(phone.value).toBe("");
+    await user.clear(birthDate);
+    await user.paste("29/02/2000");
+    expect(birthDate.value).toBe("29/02/2000");
+    await user.click(screen.getByRole("button", { name: "Enviar inscrição" }));
+    await screen.findByText("PDF enviado.");
+    expect(submissions[0].athlete).toMatchObject({
+      email: "colado@example.test", phone: "", birthDate: "2000-02-29",
+    });
+    await user.click(screen.getByRole("button", { name: "Cadastrar outro atleta" }));
+    expect(birthDate.value).toBe("");
+    expect(phone.value).toBe("");
+    await user.type(birthDate, "31121995");
+    expect(birthDate.value).toBe("31/12/1995");
+    await user.type(phone, "11912345678");
+    expect(phone.value).toBe("(11) 91234-5678");
+  });
+
+  it.each(["0101", "31122999", "31121899", "31022000"])(
+    "nao envia nascimento incompleto ou invalido digitado como %s",
+    async (value) => {
+      const user = await fillForm();
+      const birthDate = screen.getByLabelText<HTMLInputElement>("Data de nascimento", { exact: false });
+      await user.clear(birthDate);
+      await user.type(birthDate, value);
+      await user.click(screen.getByRole("button", { name: "Enviar inscrição" }));
+      await waitFor(() => expect(birthDate.getAttribute("aria-invalid")).toBe("true"));
+      expect(submissions).toHaveLength(0);
+    },
+  );
+
   it("mostra falha parcial, mantém os dados e permite reenviar pelo mesmo protocolo", async () => {
     respond = () => Response.json({
       id: "protocolo", amountCents: 6000, emailStatus: "FAILED",

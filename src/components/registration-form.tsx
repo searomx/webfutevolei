@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useHookFormMask } from "use-mask-input";
 import { Check, Copy, LoaderCircle, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,23 +22,30 @@ import {
 const fields = [
   { name: "fullName", label: "Nome completo", placeholder: "Nome e sobrenome", autoComplete: "name", max: 150, wide: true },
   { name: "nickname", label: "Apelido", placeholder: "Como você é conhecido na quadra", autoComplete: "nickname", max: 80 },
-  { name: "birthDate", label: "Data de nascimento", type: "date", autoComplete: "bday" },
+  { name: "birthDate", label: "Data de nascimento", placeholder: "dd/mm/aaaa", autoComplete: "bday", max: 10 },
   { name: "address", label: "Endereço", placeholder: "Rua, número, bairro e cidade", autoComplete: "street-address", max: 300, wide: true },
   { name: "trainingPlace", label: "Onde treina", placeholder: "Arena, clube ou local de treino", max: 150 },
   { name: "email", label: "E-mail", type: "email", placeholder: "seu@email.com", autoComplete: "email", max: 254 },
   { name: "phone", label: "Telefone", type: "tel", placeholder: "(99) 99999-9999", autoComplete: "tel", max: 20 },
 ] as const;
 
+const registrationFormSchema = registrationSchema.safeExtend({
+  birthDate: z.string()
+    .transform((value) => value.replace(/^(\d{2})\/(\d{2})\/(\d{4})$/, "$3-$2-$1"))
+    .pipe(registrationSchema.shape.birthDate),
+});
+
 export function RegistrationForm() {
   const selected = useRegistrationStore((state) => state.selectedCategories);
   const setSelected = useRegistrationStore((state) => state.setSelectedCategories);
-  const form = useForm<z.input<typeof registrationSchema>, unknown, Athlete>({
-    resolver: zodResolver(registrationSchema),
+  const form = useForm<z.input<typeof registrationFormSchema>, unknown, Athlete>({
+    resolver: zodResolver(registrationFormSchema),
     defaultValues: {
       fullName: "", nickname: "", address: "", trainingPlace: "", birthDate: "", email: "", phone: "",
       stages: [], categories: [], partners: [],
     },
   });
+  const registerWithMask = useHookFormMask(form.register);
   const [pixResponse, setPixResponse] = useState<{
     key: string; data?: z.infer<typeof pixResultSchema>; error?: string;
   }>();
@@ -136,6 +144,21 @@ export function RegistrationForm() {
             {fields.map((field) => {
               const error = form.formState.errors[field.name];
               const optional = field.name === "nickname" || field.name === "phone";
+              const registration = field.name === "phone"
+                ? registerWithMask(field.name, "(99) 99999-9999", {
+                    showMaskOnHover: false, showMaskOnFocus: false, clearIncomplete: false,
+                  })
+                : field.name === "birthDate"
+                  ? registerWithMask(field.name, "datetime", {
+                      inputFormat: "dd/mm/yyyy",
+                      showMaskOnHover: false, showMaskOnFocus: false, clearIncomplete: false,
+                    })
+                  : form.register(field.name, field.name === "email" ? {
+                      onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+                        event.target.value = event.target.value.toLowerCase();
+                      },
+                      setValueAs: (value: string) => value.toLowerCase(),
+                    } : undefined);
               return (
                 <div key={field.name} className={`form-field ${"wide" in field ? "wide" : ""}`}>
                   <Label htmlFor={field.name}>{field.label}{optional && field.name === "phone" ? " (opcional)" : null}{!optional && <span aria-hidden="true"> *</span>}</Label>
@@ -145,11 +168,12 @@ export function RegistrationForm() {
                     placeholder={"placeholder" in field ? field.placeholder : undefined}
                     autoComplete={"autoComplete" in field ? field.autoComplete : undefined}
                     maxLength={"max" in field ? field.max : undefined}
-                    min={field.name === "birthDate" ? "1900-01-01" : undefined}
+                    inputMode={field.name === "birthDate" ? "numeric" : undefined}
+                    autoCapitalize={field.name === "email" ? "none" : undefined}
                     required={!optional}
                     aria-invalid={Boolean(error)}
                     aria-describedby={error ? `${field.name}-error` : undefined}
-                    {...form.register(field.name)}
+                    {...registration}
                   />
                   {error && <p id={`${field.name}-error`} className="field-error">{error.message}</p>}
                 </div>

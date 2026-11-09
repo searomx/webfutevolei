@@ -127,6 +127,9 @@ o aviso não garante que o e-mail não tenha sido enviado.
 
 - Apelido e etapas são opcionais. Os demais dados e pelo menos uma categoria
   são obrigatórios. Nascimento: data válida de 1900 até hoje.
+- E-mail é convertido para minúsculas ao preencher. Telefone opcional usa
+  máscara `(99) 99999-9999` e nascimento usa `dd/mm/aaaa`, com formatação ao
+  digitar via `use-mask-input`. A API continua recebendo nascimento em `aaaa-mm-dd`.
 - Uma categoria custa R$ 60,00. Cada adicional soma R$ 40,00:
   duas custam R$ 100,00 e todas as oito custam R$ 340,00.
 - O servidor valida os dados e calcula o preço em centavos. Não aceita

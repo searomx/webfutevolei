@@ -19,6 +19,10 @@ describe("preço", () => {
 });
 
 describe("validação de inscrição", () => {
+  it("normaliza o email para minusculas", () => {
+    expect(registrationSchema.parse({ ...valid, email: "Atleta@EXAMPLE.org" }).email)
+      .toBe("atleta@example.org");
+  });
   it("aceita parceiros opcionais e normaliza nomes", () => {
     expect(registrationSchema.parse(valid).partners).toEqual([]);
     expect(registrationSchema.parse({
